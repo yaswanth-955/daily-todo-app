@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily To-Do App</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',sans-serif}
+body{
+min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;
+background:linear-gradient(135deg,#0f172a,#1e293b,#334155);
+}
+.container{
+width:100%;max-width:550px;background:#fff;border-radius:20px;padding:25px;
+box-shadow:0 15px 35px rgba(0,0,0,.3)
+}
+h1{text-align:center;color:#0f172a;margin-bottom:10px}
+#clock{text-align:center;color:#64748b;margin-bottom:15px;font-size:14px}
+input,select{
+width:100%;padding:12px;margin:8px 0;border:1px solid #cbd5e1;border-radius:10px
+}
+.add-btn{
+width:100%;padding:12px;border:none;border-radius:10px;background:#2563eb;color:#fff;
+cursor:pointer
+}
+.progress-container{
+margin-top:15px;height:24px;background:#e2e8f0;border-radius:20px;overflow:hidden
+}
+.progress-bar{
+height:100%;width:0%;background:linear-gradient(90deg,#22c55e,#16a34a);
+color:#fff;text-align:center;line-height:24px;transition:.4s
+}
+.stats{text-align:center;margin-top:10px;color:#64748b}
+ul{list-style:none;margin-top:15px}
+li{
+display:flex;justify-content:space-between;align-items:center;
+background:#f8fafc;margin:10px 0;padding:12px;border-radius:12px;
+border-left:5px solid #2563eb;cursor:move
+}
+.completed{text-decoration:line-through;opacity:.6}
+.category{font-size:12px;color:#64748b}
+.actions{display:flex;gap:5px}
+.done-btn,.delete-btn{
+border:none;color:#fff;padding:7px 10px;border-radius:8px;cursor:pointer
+}
+.done-btn{background:#22c55e}
+.delete-btn{background:#ef4444}
+.footer{text-align:center;margin-top:15px;font-size:12px;color:#64748b}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>📋 Daily To‑Do List</h1>
+<div id="clock"></div>
+
+<input type="text" id="taskInput" placeholder="Enter task...">
+
+<select id="category">
+<option>📚 Study</option>
+<option>💼 Work</option>
+<option>🏠 Personal</option>
+<option>🛒 Shopping</option>
+<option>🎯 Goals</option>
+</select>
+
+<button class="add-btn" onclick="addTask()">➕ Add Task</button>
+
+<div class="progress-container">
+<div id="progressBar" class="progress-bar">0%</div>
+</div>
+
+<div id="stats" class="stats">0 of 0 tasks completed</div>
+
+<ul id="taskList"></ul>
+
+<div class="footer">🌅 Tasks automatically reset when a new day starts</div>
+</div>
+
+<script>
+let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+let draggedIndex = null;
+
+function checkForNewDay(){
+    const today = new Date().toDateString();
+    const savedDate = localStorage.getItem("todoDate");
+    if(savedDate !== today){
+        tasks = [];
+        localStorage.removeItem("tasks");
+        localStorage.setItem("todoDate", today);
+        renderTasks();
+    }
+}
+checkForNewDay();
+setInterval(checkForNewDay,60000);
+
+function saveTasks(){
+ localStorage.setItem("tasks", JSON.stringify(tasks));
+}
+
+function updateClock(){
+ const now = new Date();
+ document.getElementById("clock").innerHTML =
+ now.toLocaleDateString()+"<br>"+now.toLocaleTimeString();
+}
+setInterval(updateClock,1000);
+updateClock();
+
+function updateProgress(){
+ const total=tasks.length;
+ const completed=tasks.filter(t=>t.completed).length;
+ const percent= total? Math.round(completed/total*100):0;
+
+ document.getElementById("progressBar").style.width=percent+"%";
+ document.getElementById("progressBar").textContent=percent+"%";
+ document.getElementById("stats").textContent=`${completed} of ${total} tasks completed`;
+}
+
+function renderTasks(){
+ const taskList=document.getElementById("taskList");
+ taskList.innerHTML="";
+
+ tasks.forEach((task,index)=>{
+  const li=document.createElement("li");
+  li.draggable=true;
+  li.dataset.index=index;
+
+  li.innerHTML=`
+   <div class="${task.completed?'completed':''}">
+    <div><strong>${task.text}</strong></div>
+    <div class="category">${task.category}</div>
+   </div>
+   <div class="actions">
+    <button class="done-btn" onclick="toggleTask(${index})">${task.completed?'↩️':'✅'}</button>
+    <button class="delete-btn" onclick="deleteTask(${index})">🗑️</button>
+   </div>`;
+
+  addDragEvents(li);
+  taskList.appendChild(li);
+ });
+ updateProgress();
+}
+
+function addTask(){
+ const input=document.getElementById("taskInput");
+ const text=input.value.trim();
+ if(!text) return;
+
+ tasks.push({
+  text:text,
+  category:document.getElementById("category").value,
+  completed:false
+ });
+
+ saveTasks();
+ renderTasks();
+ input.value="";
+}
+
+function toggleTask(index){
+ tasks[index].completed=!tasks[index].completed;
+ saveTasks();
+ renderTasks();
+}
+
+function deleteTask(index){
+ tasks.splice(index,1);
+ saveTasks();
+ renderTasks();
+}
+
+function addDragEvents(item){
+ item.addEventListener("dragstart",()=>{
+   draggedIndex=Number(item.dataset.index);
+ });
+ item.addEventListener("dragover",(e)=>e.preventDefault());
+ item.addEventListener("drop",()=>{
+   const targetIndex=Number(item.dataset.index);
+   if(draggedIndex===targetIndex) return;
+   const draggedTask=tasks.splice(draggedIndex,1)[0];
+   tasks.splice(targetIndex,0,draggedTask);
+   saveTasks();
+   renderTasks();
+ });
+}
+
+document.getElementById("taskInput").addEventListener("keypress",(e)=>{
+ if(e.key==="Enter") addTask();
+});
+
+renderTasks();
+</script>
+</body>
+</html>
